@@ -34,14 +34,7 @@ A complete Snake game built with HTML, CSS, JavaScript, and Canvas. It runs enti
 
 Open the repository's **Settings → Pages**, choose **Deploy from a branch**, select the `main` branch and `/ (root)`, then save. GitHub Pages serves `index.html` directly.
 
-For local testing, open `index.html` in a browser or run:
-
-```bash
-python -m http.server 8000
-```
-
-Then open `http://localhost:8000`.
-
+For local testing, open `index.html` in a browser
 ---
 
 ## Features
