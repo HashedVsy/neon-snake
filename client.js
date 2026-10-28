@@ -8,7 +8,7 @@
   const bestKey = 'neon-snake-personal-best';
   let mode = 'SOLO';
   let state = 'START';
-  let language = localStorage.getItem('neon-snake-language') || 'en';
+  let language = localStorage.getItem('neon-snake-language') || 'de';
   let best = Number(localStorage.getItem(bestKey)) || 0;
   let score = 0, apples = 0, speed = 11.5, wins = [0, 0];
   let player, opponent, food, lastStep = 0, soundOn = true;
@@ -18,11 +18,11 @@
     en: { solo:'Solo', versus:'2-Player', bot:'Vs Bot', score:'SCORE', best:'BEST', speed:'SPEED', length:'LENGTH',
       start:'Single-player high score challenge', move:'Move:', pause:'Pause / Resume:', play:'PLAY GAME', suspended:'SUSPENDED', paused:'GAME PAUSED',
       breathe:'Take a breather', resume:'RESUME', restart:'RESTART ROUND', over:'ROUND OVER', gameOver:'GAME OVER', final:'FINAL SCORE',
-      personal:'PERSONAL BEST', apples:'APPLES EATEN', again:'PLAY AGAIN', language:'DE', player2:'Player 2:', reason:'Crashed into boundary wall' },
+      personal:'PERSONAL BEST', apples:'APPLES EATEN', again:'PLAY AGAIN', language:'EN', player2:'Player 2:', reason:'Crashed into boundary wall' },
     de: { solo:'Solo', versus:'2 Spieler', bot:'Gegen Bot', score:'PUNKTE', best:'BESTE', speed:'TEMPO', length:'LÄNGE',
       start:'Einzelspieler-Highscore-Herausforderung', move:'Bewegen:', pause:'Pause / Fortsetzen:', play:'SPIEL STARTEN', suspended:'PAUSIERT', paused:'SPIEL PAUSIERT',
       breathe:'Kurze Verschnaufpause', resume:'FORTSETZEN', restart:'RUNDE NEU STARTEN', over:'RUNDE VORBEI', gameOver:'SPIEL VORBEI', final:'ENDPUNKTZAHL',
-      personal:'PERSÖNLICHER BESTWERT', apples:'ÄPFEL GEGESSEN', again:'NOCHMAL SPIELEN', language:'EN', player2:'Spieler 2:', reason:'Kollision mit der Begrenzung' }
+      personal:'PERSÖNLICHER BESTWERT', apples:'ÄPFEL GEGESSEN', again:'NOCHMAL SPIELEN', language:'DE', player2:'Spieler 2:', reason:'Kollision mit der Begrenzung' }
   };
 
   function applyLanguage() {
@@ -105,6 +105,24 @@
   function contains(snake, p) { return snake.some(x => same(x,p)); }
   function turn(snake, dir) { if (dir[0] !== -snake.dir[0] || dir[1] !== -snake.dir[1]) snake.dir = dir; }
 
+  function chooseBotDirection() {
+    const head = opponent[0];
+    const options = [[1,0],[-1,0],[0,1],[0,-1]].filter(d => d[0] !== -opponent.dir[0] || d[1] !== -opponent.dir[1]);
+    const safe = options.filter(d => {
+      const next = [head[0] + d[0], head[1] + d[1]];
+      return next[0] >= 0 && next[0] < W && next[1] >= HUD_ROWS && next[1] < H &&
+        !contains(opponent.slice(1), next) && !contains(player, next);
+    });
+    if (!safe.length) return;
+    safe.sort((a, b) => {
+      const an = [head[0] + a[0], head[1] + a[1]];
+      const bn = [head[0] + b[0], head[1] + b[1]];
+      return Math.abs(an[0] - food[0]) + Math.abs(an[1] - food[1]) -
+        Math.abs(bn[0] - food[0]) - Math.abs(bn[1] - food[1]);
+    });
+    turn(opponent, safe[0]);
+  }
+
   function moveSnake(snake) {
     const head = snake[0];
     const next = [head[0] + snake.dir[0], head[1] + snake.dir[1]];
@@ -116,7 +134,7 @@
 
   function endRound(reason, winner) {
     state = 'GAME_OVER';
-    if (winner === 0) wins[1]++; else if (winner === 1) wins[0]++;
+    if (winner === 0 || winner === 1) wins[winner]++;
     $('go-reason').textContent = reason || translations[language].reason;
     updateStats(); setOverlay('GAME_OVER');
   }
@@ -131,10 +149,7 @@
     if (result.ate) { score += 10; apples++; best = Math.max(best, score); localStorage.setItem(bestKey, best); food = randomFood(); speed = Math.min(22, 11.5 + apples * .35); }
 
     if (opponent) {
-      if (mode === 'BOT' && Math.random() < .35) {
-        const dx = food[0] - opponent[0][0], dy = food[1] - opponent[0][1];
-        if (Math.abs(dx) > Math.abs(dy)) turn(opponent, [Math.sign(dx),0]); else turn(opponent, [0,Math.sign(dy)]);
-      }
+      if (mode === 'BOT') chooseBotDirection();
       const bot = moveSnake(opponent), oh = bot.next;
       if (oh[0] < 0 || oh[0] >= W || oh[1] < HUD_ROWS || oh[1] >= H || contains(opponent.slice(1), oh) || contains(player, oh)) {
         endRound(mode === 'BOT' ? 'Bot eliminated' : 'Player 2 eliminated', 0); return;
