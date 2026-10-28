@@ -45,7 +45,6 @@ For local testing, open `index.html` in a browser
 - **Multi-Apple Spawning**: Multiple apples active in versus mode for fast-paced competitive action.
 - **Inter-Snake Collision Resolution**: Tail hits, wall hits, and head-on collisions (longer snake wins).
 - **Procedural Audio**: Real-time sound effects generated without external audio assets.
-- **Offline Download Package**: A "Download Offline" button in the web interface provides a direct download link to `dl/neon-snake-offline.zip`, containing all standalone files.
 - **Zero Emojis**: Clean, professional retro arcade aesthetics.
 - **Browser Personal Best**: Scores persist with `localStorage`.
 - **English / German**: Switch languages with the top-right language button.
