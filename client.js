@@ -15,11 +15,11 @@
 
   const $ = id => document.getElementById(id);
   const translations = {
-    en: { solo:'Solo', versus:'2-Player', bot:'Vs Bot', score:'SCORE', best:'BEST', speed:'SPEED', length:'LENGTH',
+    en: { solo:'Solo', versus:'2-Player', bot:'Vs Bot', score:'SCORE', best:'BEST', speed:'SPEED', length:'LENGTH', wins:'WINS', botPlayer:'BOT',
       start:'Single-player high score challenge', move:'Move:', pause:'Pause / Resume:', play:'PLAY GAME', suspended:'SUSPENDED', paused:'GAME PAUSED',
       breathe:'Take a breather', resume:'RESUME', restart:'RESTART ROUND', over:'ROUND OVER', gameOver:'GAME OVER', final:'FINAL SCORE',
       personal:'PERSONAL BEST', apples:'APPLES EATEN', again:'PLAY AGAIN', language:'EN', player2:'Player 2:', reason:'Crashed into boundary wall' },
-    de: { solo:'Solo', versus:'2 Spieler', bot:'Gegen Bot', score:'PUNKTE', best:'BESTE', speed:'TEMPO', length:'LÄNGE',
+    de: { solo:'Solo', versus:'2 Spieler', bot:'Gegen Bot', score:'PUNKTE', best:'BESTE', speed:'TEMPO', length:'LÄNGE', wins:'SIEGE', botPlayer:'BOT',
       start:'Einzelspieler-Highscore-Herausforderung', move:'Bewegen:', pause:'Pause / Fortsetzen:', play:'SPIEL STARTEN', suspended:'PAUSIERT', paused:'SPIEL PAUSIERT',
       breathe:'Kurze Verschnaufpause', resume:'FORTSETZEN', restart:'RUNDE NEU STARTEN', over:'RUNDE VORBEI', gameOver:'SPIEL VORBEI', final:'ENDPUNKTZAHL',
       personal:'PERSÖNLICHER BESTWERT', apples:'ÄPFEL GEGESSEN', again:'NOCHMAL SPIELEN', language:'DE', player2:'Spieler 2:', reason:'Kollision mit der Begrenzung' }
@@ -85,6 +85,7 @@
     $('cluster-solo').style.display = mode === 'SOLO' ? 'flex' : 'none';
     $('cluster-versus').style.display = mode === 'SOLO' ? 'none' : 'flex';
     $('start-p2-row').style.display = mode === 'PVP' ? 'flex' : 'none';
+    $('lbl-p2').textContent = mode === 'BOT' ? translations[language].botPlayer : 'P2 (CORAL)';
   }
 
   function updateStats() {
@@ -94,8 +95,10 @@
     $('val-length').textContent = player ? player.length : 4;
     $('val-p1').textContent = score;
     $('val-p2').textContent = opponent ? opponent.score || 0 : 0;
-    $('wins-p1').textContent = wins[0] + 'W';
-    $('wins-p2').textContent = wins[1] + 'W';
+    if (mode !== 'SOLO') {
+      $('wins-p1').textContent = `${translations[language].wins}: ${wins[0]}`;
+      $('wins-p2').textContent = `${translations[language].wins}: ${wins[1]}`;
+    }
     $('go-score').textContent = score;
     $('go-best').textContent = best;
     $('go-apples').textContent = apples;
@@ -134,7 +137,7 @@
 
   function endRound(reason, winner) {
     state = 'GAME_OVER';
-    if (winner === 0 || winner === 1) wins[winner]++;
+    if (mode !== 'SOLO' && (winner === 0 || winner === 1)) wins[winner]++;
     $('go-reason').textContent = reason || translations[language].reason;
     updateStats(); setOverlay('GAME_OVER');
   }
@@ -146,7 +149,7 @@
     if (h[0] < 0 || h[0] >= W || h[1] < HUD_ROWS || h[1] >= H || contains(player.slice(1), h) || (opponent && contains(opponent, h))) {
       endRound(translations[language].reason, opponent ? 1 : 0); return;
     }
-    if (result.ate) { score += 10; apples++; best = Math.max(best, score); localStorage.setItem(bestKey, best); food = randomFood(); speed = Math.min(22, 11.5 + apples * .35); }
+    if (result.ate) { score += 1; apples++; best = Math.max(best, score); localStorage.setItem(bestKey, best); food = randomFood(); speed = Math.min(22, 11.5 + apples * .35); }
 
     if (opponent) {
       if (mode === 'BOT') chooseBotDirection();
@@ -154,7 +157,7 @@
       if (oh[0] < 0 || oh[0] >= W || oh[1] < HUD_ROWS || oh[1] >= H || contains(opponent.slice(1), oh) || contains(player, oh)) {
         endRound(mode === 'BOT' ? 'Bot eliminated' : 'Player 2 eliminated', 0); return;
       }
-      if (bot.ate) { opponent.score = (opponent.score || 0) + 10; food = randomFood(); }
+      if (bot.ate) { opponent.score = (opponent.score || 0) + 1; food = randomFood(); }
     }
     updateStats();
   }
