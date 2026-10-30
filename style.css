@@ -91,12 +91,10 @@ html, body {
   gap: 8px;
 }
 
-.brand-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--color-cyan);
-  box-shadow: 0 0 8px var(--color-cyan);
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 0 5px rgba(0, 229, 255, 0.45));
 }
 
 .brand-name {
@@ -104,6 +102,24 @@ html, body {
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--text-primary);
+}
+
+.game-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.game-mark img {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.35));
+}
+
+.game-mark img + img {
+  filter: drop-shadow(0 0 8px rgba(255, 59, 48, 0.35));
 }
 
 /* Mode Switcher Pill Tabs */

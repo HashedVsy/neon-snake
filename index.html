@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Neon Snake — Minimalist Arcade</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +13,7 @@
     <header class="navbar">
       <div class="nav-left">
         <div class="brand">
-          <span class="brand-dot"></span>
+          <img class="brand-icon" src="assets/snake.svg" alt="">
           <span class="brand-name">NEON SNAKE</span>
         </div>
 
@@ -92,6 +93,10 @@
         <div class="screen-overlay" id="overlay-start">
           <div class="overlay-card">
               <div class="card-badge">RETRO ARCADE</div>
+            <div class="game-mark" aria-hidden="true">
+              <img src="assets/snake.svg" alt="">
+              <img src="assets/apple.svg" alt="">
+            </div>
             <h1 class="card-title">NEON SNAKE</h1>
             <p class="card-subtitle" id="start-mode-desc">Single-player high score challenge</p>
 

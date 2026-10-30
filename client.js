@@ -169,7 +169,7 @@
     for (let y=HUD_ROWS;y<=H;y++) { ctx.beginPath(); ctx.moveTo(0,y*CELL); ctx.lineTo(W*CELL,y*CELL); ctx.stroke(); }
     ctx.fillStyle = '#081018'; ctx.fillRect(0,0,canvas.width,HUD_ROWS*CELL);
     ctx.strokeStyle = '#00b0ff'; ctx.strokeRect(0,HUD_ROWS*CELL,canvas.width,canvas.height-HUD_ROWS*CELL);
-    if (food) { ctx.fillStyle='#ff3b30'; ctx.beginPath(); ctx.arc(food[0]*CELL+10,food[1]*CELL+10,7,0,Math.PI*2); ctx.fill(); }
+    if (food) drawApple(food);
     drawSnake(player,'#00e5ff'); if (opponent) drawSnake(opponent,'#ff3366');
     ctx.fillStyle='#f0f6fc'; ctx.font='bold 16px sans-serif'; ctx.fillText(`${translations[language].score}: ${score}`,12,16);
     ctx.fillStyle='#ffd700'; ctx.font='14px sans-serif'; ctx.fillText(`${translations[language].best}: ${best}`,canvas.width-115,16);
@@ -177,7 +177,102 @@
 
   function drawSnake(snake, color) {
     if (!snake) return;
-    snake.forEach((p,i) => { ctx.fillStyle = i === 0 ? '#ffffff' : color; ctx.fillRect(p[0]*CELL+2,p[1]*CELL+2,CELL-4,CELL-4); });
+
+    // Draw the tail first so each segment tucks naturally underneath the next one.
+    snake.slice().reverse().forEach((p, reverseIndex) => {
+      const i = snake.length - reverseIndex - 1;
+      const x = p[0] * CELL + 2;
+      const y = p[1] * CELL + 2;
+      const size = CELL - 4;
+      const radius = i === 0 ? 6 : 5;
+      const segmentColor = color;
+
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = i === 0 ? 9 : 5;
+      ctx.fillStyle = segmentColor;
+      roundedRect(x, y, size, size, radius);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      if (i === 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,.62)';
+        ctx.lineWidth = 1;
+        roundedRect(x + .5, y + .5, size - 1, size - 1, radius - 1);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,.22)';
+        roundedRect(x + 2, y + 2, size - 4, 3, 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,.16)';
+        roundedRect(x + 2, y + size - 5, size - 4, 2, 1);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    const head = snake[0];
+    if (!head) return;
+    const hx = head[0] * CELL + 2;
+    const hy = head[1] * CELL + 2;
+    const dir = snake.dir || [1, 0];
+    const side = [-dir[1], dir[0]];
+    const centerX = hx + (CELL - 4) / 2;
+    const centerY = hy + (CELL - 4) / 2;
+    const forward = 4.2;
+    const eyeOffset = 3.2;
+
+    ctx.fillStyle = '#07131f';
+    [ [centerX + dir[0] * forward + side[0] * eyeOffset, centerY + dir[1] * forward + side[1] * eyeOffset],
+      [centerX + dir[0] * forward - side[0] * eyeOffset, centerY + dir[1] * forward - side[1] * eyeOffset] ].forEach(([x, y]) => {
+      ctx.beginPath(); ctx.arc(x, y, 1.65, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.82)';
+      ctx.beginPath(); ctx.arc(x - dir[0] * .45, y - dir[1] * .45, .55, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#07131f';
+    });
+  }
+
+  function drawApple(point) {
+    const x = point[0] * CELL + CELL / 2;
+    const y = point[1] * CELL + 11;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 59, 48, .85)';
+    ctx.shadowBlur = 12;
+    const apple = ctx.createRadialGradient(x - 3, y - 3, 1, x, y, 8);
+    apple.addColorStop(0, '#ffb0aa');
+    apple.addColorStop(.28, '#ff6258');
+    apple.addColorStop(1, '#d81b2a');
+    ctx.fillStyle = apple;
+    ctx.beginPath();
+    ctx.arc(x - 3.5, y, 6.5, 0, Math.PI * 2);
+    ctx.arc(x + 3.5, y, 6.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 5); ctx.quadraticCurveTo(x - 1, y - 9, x + 2, y - 11); ctx.stroke();
+    ctx.fillStyle = '#34d399';
+    ctx.beginPath();
+    ctx.ellipse(x + 5, y - 9, 4, 2, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.8)';
+    ctx.beginPath(); ctx.ellipse(x - 5, y - 3, 1.8, 3, -.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function roundedRect(x, y, width, height, radius) {
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + width, y, x + width, y + height, r);
+    ctx.arcTo(x + width, y + height, x, y + height, r);
+    ctx.arcTo(x, y + height, x, y, r);
+    ctx.arcTo(x, y, x + width, y, r);
+    ctx.closePath();
   }
 
   function frame(now) {
