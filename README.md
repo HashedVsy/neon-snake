@@ -35,6 +35,16 @@ A complete Snake game built with HTML, CSS, JavaScript, and Canvas. It runs enti
 Open the repository's **Settings → Pages**, choose **Deploy from a branch**, select the `main` branch and `/ (root)`, then save. GitHub Pages serves `index.html` directly.
 
 For local testing, open `index.html` in a browser
+
+## Extras
+
+The **Extras** tab loads repository-bundled games from `extras/manifest.json`. Put a complete game folder inside `extras/`, then run:
+
+```bash
+python tools/add_extra.py
+```
+
+The tool asks for the game name, folder, entry HTML, and an optional thumbnail path relative to that folder. It updates the manifest automatically. Reload `index.html` and the game appears as **Bundled with Neon Snake**; users do not need to download or install anything separately.
 ---
 
 ## Features

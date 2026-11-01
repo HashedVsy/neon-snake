@@ -12,18 +12,238 @@
   let best = Number(localStorage.getItem(bestKey)) || 0;
   let score = 0, apples = 0, speed = 11.5, wins = [0, 0];
   let player, opponent, food, lastStep = 0, soundOn = true;
+  let appTab = 'snake';
+  const extraGames = [];
+  const extraObjectUrls = [];
 
   const $ = id => document.getElementById(id);
   const translations = {
     en: { solo:'Solo', versus:'2-Player', bot:'Vs Bot', score:'SCORE', best:'BEST', speed:'SPEED', length:'LENGTH', wins:'WINS', botPlayer:'BOT',
       start:'Single-player high score challenge', move:'Move:', pause:'Pause / Resume:', play:'PLAY GAME', suspended:'SUSPENDED', paused:'GAME PAUSED',
       breathe:'Take a breather', resume:'RESUME', restart:'RESTART ROUND', over:'ROUND OVER', gameOver:'GAME OVER', final:'FINAL SCORE',
-      personal:'PERSONAL BEST', apples:'APPLES EATEN', again:'PLAY AGAIN', language:'EN', player2:'Player 2:', reason:'Crashed into boundary wall' },
+      personal:'PERSONAL BEST', apples:'APPLES EATEN', again:'PLAY AGAIN', language:'EN', player2:'Player 2:', reason:'Crashed into boundary wall', extrasSubtitle:'Play bundled games or add your own HTML games.', addHtml:'Add HTML', addFolder:'Add folder', dropTitle:'Drop an HTML file or game folder here', dropHelp:'Folders should contain an index.html or another HTML entry file.', backExtras:'Back to Extras', fullscreen:'Fullscreen', exitFullscreen:'Exit fullscreen' },
     de: { solo:'Solo', versus:'2 Spieler', bot:'Gegen Bot', score:'PUNKTE', best:'BESTE', speed:'TEMPO', length:'LÄNGE', wins:'SIEGE', botPlayer:'BOT',
       start:'Einzelspieler-Highscore-Herausforderung', move:'Bewegen:', pause:'Pause / Fortsetzen:', play:'SPIEL STARTEN', suspended:'PAUSIERT', paused:'SPIEL PAUSIERT',
       breathe:'Kurze Verschnaufpause', resume:'FORTSETZEN', restart:'RUNDE NEU STARTEN', over:'RUNDE VORBEI', gameOver:'SPIEL VORBEI', final:'ENDPUNKTZAHL',
-      personal:'PERSÖNLICHER BESTWERT', apples:'ÄPFEL GEGESSEN', again:'NOCHMAL SPIELEN', language:'DE', player2:'Spieler 2:', reason:'Kollision mit der Begrenzung' }
+      personal:'PERSÖNLICHER BESTWERT', apples:'ÄPFEL GEGESSEN', again:'NOCHMAL SPIELEN', language:'DE', player2:'Spieler 2:', reason:'Kollision mit der Begrenzung', extrasSubtitle:'Enthaltene Spiele spielen oder eigene HTML-Spiele hinzufügen.', addHtml:'HTML hinzufügen', addFolder:'Ordner hinzufügen', dropTitle:'HTML-Datei oder Spieleordner hier ablegen', dropHelp:'Ordner sollten eine index.html oder eine andere HTML-Startdatei enthalten.', backExtras:'Zurück zu Extras', fullscreen:'Vollbild', exitFullscreen:'Vollbild beenden' }
   };
+
+  function normalizePath(path) {
+    const parts = path.replace(/\\/g, '/').split('/');
+    const result = [];
+    parts.forEach(part => {
+      if (!part || part === '.') return;
+      if (part === '..') result.pop();
+      else result.push(part);
+    });
+    return result.join('/');
+  }
+
+  function getExtraEntry(files) {
+    const paths = files.map(file => file.webkitRelativePath || file.name);
+    const preferred = paths.find(path => /(^|\/)index\.html?$/i.test(path));
+    return preferred || paths.find(path => /\.html?$/i.test(path));
+  }
+
+  async function createFolderGame(files) {
+    const fileList = Array.from(files);
+    const entryPath = getExtraEntry(fileList);
+    if (!entryPath) throw new Error('No HTML entry file found in that folder.');
+
+    const root = entryPath.includes('/') ? entryPath.slice(0, entryPath.indexOf('/')) + '/' : '';
+    const fileMap = new Map();
+    fileList.forEach(file => {
+      const path = file.webkitRelativePath || file.name;
+      fileMap.set(normalizePath(path.slice(root.length)), URL.createObjectURL(file));
+    });
+    const entryKey = normalizePath(entryPath.slice(root.length));
+    const entryFile = fileList.find(file => (file.webkitRelativePath || file.name) === entryPath);
+    const html = await entryFile.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const entryDir = entryKey.includes('/') ? entryKey.slice(0, entryKey.lastIndexOf('/') + 1) : '';
+
+    doc.querySelectorAll('[src], [href], [poster]').forEach(element => {
+      ['src', 'href', 'poster'].forEach(attribute => {
+        const value = element.getAttribute(attribute);
+        if (!value || /^(?:[a-z]+:|\/\/|#|data:|blob:)/i.test(value)) return;
+        const [path, suffix = ''] = value.split(/([?#].*)/, 2);
+        const mapped = fileMap.get(normalizePath(entryDir + path));
+        if (mapped) element.setAttribute(attribute, mapped + suffix);
+      });
+    });
+    doc.querySelectorAll('style').forEach(style => {
+      style.textContent = rewriteCssUrls(style.textContent, entryDir, fileMap);
+    });
+    const blob = new Blob(['<!doctype html>\n' + doc.documentElement.outerHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    extraObjectUrls.push(url, ...fileMap.values());
+    return { name: root.replace(/\/$/, '') || entryFile.name, url, removable: true };
+  }
+
+  function rewriteCssUrls(css, base, fileMap) {
+    return css.replace(/url\((['"]?)([^'")]+)\1\)/gi, (match, quote, value) => {
+      if (/^(?:[a-z]+:|\/\/|data:|#)/i.test(value)) return match;
+      const mapped = fileMap.get(normalizePath(base + value));
+      return mapped ? `url(${quote}${mapped}${quote})` : match;
+    });
+  }
+
+  function addExtraGame(game) {
+    extraGames.push(game);
+    renderExtras();
+  }
+
+  function renderExtras() {
+    const grid = $('extras-grid');
+    grid.innerHTML = '';
+    $('extras-empty').hidden = extraGames.length > 0;
+    extraGames.forEach((game, index) => {
+      const card = document.createElement('article');
+      card.className = 'extra-card';
+      card.innerHTML = `${game.thumbnail ? '<img class="extra-thumbnail" alt="">' : ''}<h2></h2><p>${game.bundled ? 'Bundled with Neon Snake' : 'Added in this browser session'}</p>`;
+      if (game.thumbnail) {
+        const thumbnail = card.querySelector('.extra-thumbnail');
+        thumbnail.src = game.thumbnail;
+        thumbnail.alt = game.name;
+      }
+      card.querySelector('h2').textContent = game.name;
+      const play = document.createElement('button');
+      play.className = 'primary-btn'; play.textContent = 'PLAY';
+      play.addEventListener('click', () => playExtraGame(game));
+      card.appendChild(play);
+      if (game.removable) {
+        const remove = document.createElement('button');
+        remove.className = 'secondary-btn'; remove.textContent = 'Remove';
+        remove.addEventListener('click', () => {
+          extraGames.splice(index, 1); renderExtras();
+        });
+        card.appendChild(remove);
+      }
+      grid.appendChild(card);
+    });
+  }
+
+  function playExtraGame(game) {
+    $('extras-player-title').textContent = game.name;
+    const iframe = $('extras-iframe');
+    iframe.src = game.url;
+    iframe.addEventListener('load', () => iframe.focus(), { once: true });
+    $('extras-panel').hidden = true;
+    $('extras-player').hidden = false;
+  }
+
+  function showExtrasLibrary() {
+    $('extras-player').hidden = true;
+    $('extras-panel').hidden = false;
+    stopExtraGame();
+  }
+
+  function stopExtraGame() {
+    const iframe = $('extras-iframe');
+    iframe.src = 'about:blank';
+  }
+
+  function setAppTab(next) {
+    appTab = next;
+    const extras = next === 'extras';
+    $('tab-snake').classList.toggle('active', !extras);
+    $('tab-extras').classList.toggle('active', extras);
+    document.querySelector('.snake-mode-nav').style.display = extras ? 'none' : '';
+    $('snake-stats').style.display = extras ? 'none' : '';
+    $('canvas-wrapper').style.display = extras ? 'none' : '';
+    $('mobile-touch-panel').style.display = extras ? 'none' : '';
+    if (extras) showExtrasLibrary();
+    else {
+      stopExtraGame();
+      $('extras-panel').hidden = true;
+      $('extras-player').hidden = true;
+    }
+    $('btn-pause-toggle').style.display = extras ? 'none' : '';
+  }
+
+  async function addDroppedFiles(files) {
+    const fileList = Array.from(files);
+    if (!fileList.length) return;
+    const hasPaths = fileList.some(file => file.webkitRelativePath);
+    if (hasPaths || fileList.length > 1) {
+      addExtraGame(await createFolderGame(fileList));
+      return;
+    }
+    const file = fileList[0];
+    if (!/\.html?$/i.test(file.name)) throw new Error('Please drop an HTML file or a game folder.');
+    const url = URL.createObjectURL(file);
+    extraObjectUrls.push(url);
+    addExtraGame({ name: file.name.replace(/\.html?$/i, ''), url, removable: true });
+  }
+
+  async function readEntryFiles(entry, prefix = '') {
+    if (entry.isFile) {
+      const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+      Object.defineProperty(file, 'webkitRelativePath', { value: prefix + file.name });
+      return [file];
+    }
+    const reader = entry.createReader();
+    const entries = [];
+    while (true) {
+      const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+      if (!batch.length) break;
+      entries.push(...batch);
+    }
+    const children = await Promise.all(entries.map(child => readEntryFiles(child, prefix + entry.name + '/')));
+    return children.flat();
+  }
+
+  function showDropError(error) {
+    $('extras-dropzone').querySelector('strong').textContent = error.message || 'Could not add that game.';
+  }
+
+  function setupExtras() {
+    (window.NEON_SNAKE_EXTRAS || []).forEach(game => addExtraGame({ ...game, bundled: true }));
+    document.querySelectorAll('[data-app-tab]').forEach(button => button.addEventListener('click', () => setAppTab(button.dataset.appTab)));
+    $('extras-back-btn').addEventListener('click', showExtrasLibrary);
+    $('extras-fullscreen-btn').addEventListener('click', async () => {
+      const iframe = $('extras-iframe');
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else if (iframe.requestFullscreen) {
+          await iframe.requestFullscreen();
+          iframe.focus();
+          if (iframe.contentWindow) iframe.contentWindow.focus();
+        }
+        else throw new Error('Fullscreen is not supported by this browser.');
+      } catch (error) {
+        console.warn(error.message || error);
+      }
+    });
+    $('extras-iframe').addEventListener('pointerdown', () => $('extras-iframe').focus());
+    document.addEventListener('fullscreenchange', () => {
+      const label = translations[language][document.fullscreenElement ? 'exitFullscreen' : 'fullscreen'];
+      $('extras-fullscreen-btn').title = label;
+      $('extras-fullscreen-btn').setAttribute('aria-label', label);
+      const iframe = $('extras-iframe');
+      if (document.fullscreenElement === iframe) {
+        setTimeout(() => {
+          iframe.focus();
+          if (iframe.contentWindow) iframe.contentWindow.focus();
+        }, 0);
+      }
+    });
+    $('extras-file-input').addEventListener('change', event => addDroppedFiles(event.target.files).catch(showDropError));
+    $('extras-folder-input').addEventListener('change', event => addDroppedFiles(event.target.files).catch(showDropError));
+    const zone = $('extras-dropzone');
+    ['dragenter', 'dragover'].forEach(type => zone.addEventListener(type, event => { event.preventDefault(); zone.classList.add('is-dragging'); }));
+    ['dragleave', 'drop'].forEach(type => zone.addEventListener(type, event => { event.preventDefault(); zone.classList.remove('is-dragging'); }));
+    zone.addEventListener('drop', event => {
+      const items = Array.from(event.dataTransfer.items || []);
+      const entries = items.map(item => item.webkitGetAsEntry && item.webkitGetAsEntry()).filter(Boolean);
+      if (entries.some(entry => entry.isDirectory)) {
+        const directory = entries.find(entry => entry.isDirectory);
+        readEntryFiles(directory).then(files => addDroppedFiles(files)).catch(showDropError);
+        return;
+      }
+      addDroppedFiles(event.dataTransfer.files).catch(showDropError);
+    });
+  }
 
   function applyLanguage() {
     const t = translations[language];
@@ -39,6 +259,16 @@
     const p2 = document.querySelector('#start-p2-row .ctrl-desc');
     if (p2) p2.textContent = t.player2;
     if ($('btn-language')) $('btn-language').textContent = t.language;
+    const extrasText = {
+      'extras-subtitle': t.extrasSubtitle, 'extras-add-html': t.addHtml, 'extras-add-folder': t.addFolder,
+      'extras-drop-title': t.dropTitle, 'extras-drop-help': t.dropHelp, 'extras-back-btn': t.backExtras
+    };
+    Object.entries(extrasText).forEach(([id, value]) => { if ($(id)) $(id).textContent = value; });
+    if ($('extras-fullscreen-btn')) {
+      const label = document.fullscreenElement ? t.exitFullscreen : t.fullscreen;
+      $('extras-fullscreen-btn').title = label;
+      $('extras-fullscreen-btn').setAttribute('aria-label', label);
+    }
     document.documentElement.lang = language;
     localStorage.setItem('neon-snake-language', language);
     updateModeText();
@@ -276,6 +506,11 @@
   }
 
   function frame(now) {
+    if (appTab !== 'snake') {
+      lastStep = now;
+      requestAnimationFrame(frame);
+      return;
+    }
     if (!lastStep) lastStep = now;
     if (now - lastStep >= 1000 / speed) { lastStep = now; updateGame(); }
     draw(); requestAnimationFrame(frame);
@@ -291,7 +526,10 @@
     if (dirs[code]) { if (mode === 'PVP' && ['KeyW','KeyA','KeyS','KeyD'].includes(code)) turn(opponent,dirs[code]); else turn(player,dirs[code]); }
   }
 
-  document.addEventListener('keydown', e => { if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space','Enter','KeyP','KeyR','Escape','Digit1','Digit2','Digit3'].includes(e.code)) { e.preventDefault(); key(e.code); } });
+  document.addEventListener('keydown', e => {
+    if (appTab === 'extras') return;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space','Enter','KeyP','KeyR','Escape','Digit1','Digit2','Digit3'].includes(e.code)) { e.preventDefault(); key(e.code); }
+  });
   $('btn-start-action').addEventListener('click', () => key('Space'));
   $('btn-resume-action').addEventListener('click', () => key('Space'));
   $('btn-restart-action').addEventListener('click', () => key('KeyR'));
@@ -303,5 +541,5 @@
   document.querySelectorAll('.touch-btn[data-dir]').forEach(btn => btn.addEventListener('click', () => key(btn.dataset.dir === 'UP' ? 'ArrowUp' : btn.dataset.dir === 'DOWN' ? 'ArrowDown' : btn.dataset.dir === 'LEFT' ? 'ArrowLeft' : 'ArrowRight')));
   $('touch-action').addEventListener('click', () => key(state === 'PLAYING' ? 'KeyP' : 'Space'));
 
-  resetRound(); applyLanguage(); updateModeText(); setOverlay('START'); requestAnimationFrame(frame);
+  resetRound(); applyLanguage(); updateModeText(); setupExtras(); setOverlay('START'); requestAnimationFrame(frame);
 })();

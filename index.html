@@ -17,14 +17,19 @@
           <span class="brand-name">NEON SNAKE</span>
         </div>
 
-        <nav class="mode-nav" aria-label="Game Mode">
+        <nav class="mode-nav app-nav" aria-label="Game">
+          <button class="mode-pill active" data-app-tab="snake" id="tab-snake">Snake</button>
+          <button class="mode-pill" data-app-tab="extras" id="tab-extras">Extras</button>
+        </nav>
+
+        <nav class="mode-nav snake-mode-nav" aria-label="Game Mode">
           <button class="mode-pill active" data-mode="SOLO" id="pill-solo">Solo</button>
           <button class="mode-pill" data-mode="PVP" id="pill-pvp">2-Player</button>
           <button class="mode-pill" data-mode="BOT" id="pill-bot">Vs Bot</button>
         </nav>
       </div>
 
-      <div class="nav-center">
+      <div class="nav-center" id="snake-stats">
         <!-- Solo Stats -->
         <div class="stat-cluster" id="cluster-solo">
           <div class="stat-item">
@@ -174,6 +179,46 @@
         </div>
       </div>
 
+      <section class="extras-panel" id="extras-panel" aria-labelledby="extras-title" hidden>
+        <div class="extras-heading">
+          <div>
+            <div class="card-badge">GAME LIBRARY</div>
+            <h1 class="card-title" id="extras-title">Extras</h1>
+            <p class="card-subtitle" id="extras-subtitle">Play bundled games or add your own HTML games.</p>
+          </div>
+          <div class="extras-actions">
+            <label class="secondary-btn extras-add-btn">
+              <span id="extras-add-html">Add HTML</span>
+              <input type="file" id="extras-file-input" accept=".html,.htm" hidden>
+            </label>
+            <label class="secondary-btn extras-add-btn">
+              <span id="extras-add-folder">Add folder</span>
+              <input type="file" id="extras-folder-input" webkitdirectory directory multiple hidden>
+            </label>
+          </div>
+        </div>
+
+        <div class="extras-dropzone" id="extras-dropzone" tabindex="0">
+          <span class="dropzone-icon">+</span>
+          <strong id="extras-drop-title">Drop an HTML file or game folder here</strong>
+          <span id="extras-drop-help">Folders should contain an index.html or another HTML entry file.</span>
+        </div>
+
+        <div class="extras-grid" id="extras-grid"></div>
+        <p class="extras-empty" id="extras-empty" hidden>No extra games yet. Drop one above to add it.</p>
+      </section>
+
+      <section class="extras-player" id="extras-player" hidden aria-label="Extra game player">
+        <div class="extras-player-bar">
+          <button class="secondary-btn" id="extras-back-btn">Back to Extras</button>
+          <strong id="extras-player-title">Extra game</strong>
+        </div>
+        <button class="extras-fullscreen-btn" id="extras-fullscreen-btn" type="button" title="Fullscreen" aria-label="Fullscreen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+        </button>
+        <iframe id="extras-iframe" title="Extra game" tabindex="0" allow="fullscreen; autoplay; clipboard-read; clipboard-write" allowfullscreen></iframe>
+      </section>
+
       <!-- Mobile Touch Controls (shown only on touch/narrow devices) -->
       <div class="mobile-touch-panel" id="mobile-touch-panel">
         <button class="touch-btn up" data-dir="UP" aria-label="Up">&uarr;</button>
@@ -214,6 +259,7 @@
     </footer>
   </div>
 
+  <script src="extras/manifest.js"></script>
   <script src="client.js"></script>
 </body>
 </html>
